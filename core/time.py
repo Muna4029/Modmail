@@ -11,7 +11,7 @@ import discord
 from typing import TYPE_CHECKING, Any, Optional, Union
 import parsedatetime as pdt
 from dateutil.relativedelta import relativedelta
-from .utils import human_join
+from core.utils import human_join
 from discord.ext import commands
 from discord import app_commands
 import re
@@ -89,7 +89,12 @@ class HumanTime:
 
         if not status.hasTime:
             # replace it with the current time
-            dt = dt.replace(hour=now.hour, minute=now.minute, second=now.second, microsecond=now.microsecond)
+            dt = dt.replace(
+                hour=now.hour,
+                minute=now.minute,
+                second=now.second,
+                microsecond=now.microsecond,
+            )
 
         self.dt: datetime.datetime = dt
         self._past: bool = dt < now
@@ -158,7 +163,11 @@ class FriendlyTimeResult:
         self.arg = ""
 
     async def ensure_constraints(
-        self, ctx: Context, uft: UserFriendlyTime, now: datetime.datetime, remaining: str
+        self,
+        ctx: Context,
+        uft: UserFriendlyTime,
+        now: datetime.datetime,
+        remaining: str,
     ) -> None:
         if self.dt < now:
             raise commands.BadArgument("This time is in the past.")
@@ -254,7 +263,12 @@ class UserFriendlyTime(commands.Converter):
 
         if not status.hasTime:
             # replace it with the current time
-            dt = dt.replace(hour=now.hour, minute=now.minute, second=now.second, microsecond=now.microsecond)
+            dt = dt.replace(
+                hour=now.hour,
+                minute=now.minute,
+                second=now.second,
+                microsecond=now.microsecond,
+            )
 
         # if midnight is provided, just default to next day
         if status.accuracy == pdt.pdtContext.ACU_HALFDAY:

@@ -14,7 +14,6 @@ from discord.ext import commands
 
 from core.models import getLogger
 
-
 __all__ = [
     "strtobool",
     "User",
@@ -262,7 +261,9 @@ TOPIC_REGEX = re.compile(
 UID_REGEX = re.compile(r"\bUser ID:\s*(\d{17,21})\b", flags=re.IGNORECASE)
 
 
-def parse_channel_topic(text: str) -> typing.Tuple[typing.Optional[str], int, typing.List[int]]:
+def parse_channel_topic(
+    text: str,
+) -> typing.Tuple[typing.Optional[str], int, typing.List[int]]:
     """
     A helper to parse channel topics and respectivefully returns all the required values
     at once.
@@ -363,7 +364,8 @@ def match_other_recipients(text: str) -> typing.List[int]:
 def create_not_found_embed(word, possibilities, name, n=2, cutoff=0.6) -> discord.Embed:
     # Single reference of Color.red()
     embed = discord.Embed(
-        color=discord.Color.red(), description=f"**{name.capitalize()} `{word}` cannot be found.**"
+        color=discord.Color.red(),
+        description=f"**{name.capitalize()} `{word}` cannot be found.**",
     )
     val = get_close_matches(word, possibilities, n=n, cutoff=cutoff)
     if val:

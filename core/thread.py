@@ -4,7 +4,7 @@ import copy
 import functools
 import io
 import re
-import time
+from time import time as stdlib_time
 import traceback
 import typing
 import warnings
@@ -291,12 +291,18 @@ class Thread:
         if self.log_key:
             result = await self.bot.api.logs.update_one(
                 {"key": self.log_key},
-                {"$set": {"channel_id": str(channel.id)}, "$unset": {"snoozed": "", "snooze_data": ""}},
+                {
+                    "$set": {"channel_id": str(channel.id)},
+                    "$unset": {"snoozed": "", "snooze_data": ""},
+                },
             )
         else:
             result = await self.bot.api.logs.update_one(
                 {"recipient.id": str(self.id)},
-                {"$set": {"channel_id": str(channel.id)}, "$unset": {"snoozed": "", "snooze_data": ""}},
+                {
+                    "$set": {"channel_id": str(channel.id)},
+                    "$unset": {"snoozed": "", "snooze_data": ""},
+                },
             )
             if result.modified_count == 0:
                 result = await self.bot.api.logs.update_one(
@@ -434,7 +440,8 @@ class Thread:
                 footer = self.bot.config["thread_creation_footer"]
 
             embed.set_footer(
-                text=footer, icon_url=self.bot.get_guild_icon(guild=self.bot.modmail_guild, size=128)
+                text=footer,
+                icon_url=self.bot.get_guild_icon(guild=self.bot.modmail_guild, size=128),
             )
             embed.title = self.bot.config["thread_creation_title"]
 
@@ -464,7 +471,7 @@ class Thread:
                     display_avatar = SimpleNamespace(url=author["avatar_url"])
 
                 data = {
-                    "id": round(time.time() * 1000 - discord.utils.DISCORD_EPOCH) << 22,
+                    "id": round(stdlib_time.time() * 1000 - discord.utils.DISCORD_EPOCH) << 22,
                     "attachments": {},
                     "embeds": {},
                     "edited_timestamp": None,
@@ -725,12 +732,18 @@ class Thread:
                 message = self.bot.config["thread_close_response"]
 
         message = self.bot.formatter.format(
-            message, closer=closer, loglink=log_url, logkey=log_data["key"] if log_data else None
+            message,
+            closer=closer,
+            loglink=log_url,
+            logkey=log_data["key"] if log_data else None,
         )
 
         embed.description = message
         footer = self.bot.config["thread_close_footer"]
-        embed.set_footer(text=footer, icon_url=self.bot.get_guild_icon(guild=self.bot.guild, size=128))
+        embed.set_footer(
+            text=footer,
+            icon_url=self.bot.get_guild_icon(guild=self.bot.guild, size=128),
+        )
 
         if not silent:
             for user in self.recipients:
@@ -801,7 +814,12 @@ class Thread:
                 time_marker_regex,
             )
 
-        await self.close(closer=self.bot.user, after=int(seconds), message=close_message, auto_close=True)
+        await self.close(
+            closer=self.bot.user,
+            after=int(seconds),
+            message=close_message,
+            auto_close=True,
+        )
 
     async def find_linked_messages(
         self,
@@ -890,7 +908,10 @@ class Thread:
         embed1 = message1.embeds[0]
         embed1.description = message
 
-        tasks = [self.bot.api.edit_message(message1.id, message), message1.edit(embed=embed1)]
+        tasks = [
+            self.bot.api.edit_message(message1.id, message),
+            message1.edit(embed=embed1),
+        ]
         if message1.embeds[0].footer and "Persistent Internal Message" in message1.embeds[0].footer.text:
             tasks += [self.bot.api.edit_note(message1.id, message)]
         else:
@@ -1085,7 +1106,11 @@ class Thread:
         else:
             # Send the same thing in the thread channel.
             msg = await self.send(
-                message, destination=self.channel, from_mod=True, anonymous=anonymous, plain=plain
+                message,
+                destination=self.channel,
+                from_mod=True,
+                anonymous=anonymous,
+                plain=plain,
             )
 
             tasks.append(
@@ -1133,7 +1158,8 @@ class Thread:
 
             # Create embed for note with Discord system message style
             embed = discord.Embed(
-                description=content, color=0x5865F2  # Discord blurple color for system messages
+                description=content,
+                color=0x5865F2,  # Discord blurple color for system messages
             )
 
             # Set author with note icon and username
@@ -1143,7 +1169,8 @@ class Thread:
                 note_type = "Note"
 
             embed.set_author(
-                name=f"📝 {note_type} ({message.author.name})", icon_url=message.author.display_avatar.url
+                name=f"📝 {note_type} ({message.author.name})",
+                icon_url=message.author.display_avatar.url,
             )
 
             # Add timestamp if enabled
@@ -1332,7 +1359,11 @@ class Thread:
                 discord.StickerFormatType.gif,
             ):
                 images.append(
-                    (f"https://media.discordapp.net/stickers/{i.id}.{i.format.file_extension}", i.name, True)
+                    (
+                        f"https://media.discordapp.net/stickers/{i.id}.{i.format.file_extension}",
+                        i.name,
+                        True,
+                    )
                 )
             elif i.format == discord.StickerFormatType.lottie:
                 # save the json lottie representation
@@ -1464,7 +1495,11 @@ class Thread:
             logger.warning("Channel not found.")
             raise
         except (discord.Forbidden, discord.HTTPException, Exception) as e:
-            logger.warning("Unable to send typing to %s: %s. Continuing without typing.", destination, e)
+            logger.warning(
+                "Unable to send typing to %s: %s. Continuing without typing.",
+                destination,
+                e,
+            )
 
         if not from_mod and not note:
             mentions = await self.get_notifications()
@@ -1621,7 +1656,8 @@ class ThreadManager:
             thread = await self._find_from_channel(channel)
             if thread is None:
                 user_id, thread = next(
-                    ((k, v) for k, v in self.cache.items() if v.channel == channel), (-1, None)
+                    ((k, v) for k, v in self.cache.items() if v.channel == channel),
+                    (-1, None),
                 )
                 if thread is not None:
                     logger.debug("Found thread with tempered ID.")
@@ -1759,7 +1795,10 @@ class ThreadManager:
                 if thread.channel and self.bot.get_channel(thread.channel.id):
                     logger.warning("Found an existing thread for %s, abort creating.", recipient)
                     return thread
-                logger.warning("Found an existing thread for %s, closing previous thread.", recipient)
+                logger.warning(
+                    "Found an existing thread for %s, closing previous thread.",
+                    recipient,
+                )
                 self.bot.loop.create_task(
                     thread.close(closer=self.bot.user, silent=True, delete_channel=False)
                 )
@@ -1775,9 +1814,17 @@ class ThreadManager:
                 destination = message.channel
             view = ConfirmThreadCreationView()
             view.add_item(
-                AcceptButton("accept-thread-creation", self.bot.config["confirm_thread_creation_accept"])
+                AcceptButton(
+                    "accept-thread-creation",
+                    self.bot.config["confirm_thread_creation_accept"],
+                )
             )
-            view.add_item(DenyButton("deny-thread-creation", self.bot.config["confirm_thread_creation_deny"]))
+            view.add_item(
+                DenyButton(
+                    "deny-thread-creation",
+                    self.bot.config["confirm_thread_creation_deny"],
+                )
+            )
             confirm = await destination.send(
                 embed=discord.Embed(
                     title=self.bot.config["confirm_thread_creation_title"],
@@ -1804,7 +1851,8 @@ class ThreadManager:
                 self.bot.loop.create_task(
                     destination.send(
                         embed=discord.Embed(
-                            title=self.bot.config["thread_cancelled"], color=self.bot.error_color
+                            title=self.bot.config["thread_cancelled"],
+                            color=self.bot.error_color,
                         )
                     )
                 )

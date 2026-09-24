@@ -198,7 +198,13 @@ class ConfigManager:
 
     colors = {"mod_color", "recipient_color", "main_color", "error_color"}
 
-    time_deltas = {"account_age", "guild_age", "thread_auto_close", "thread_cooldown", "log_expiration"}
+    time_deltas = {
+        "account_age",
+        "guild_age",
+        "thread_auto_close",
+        "thread_cooldown",
+        "log_expiration",
+    }
 
     booleans = {
         "use_user_id_channel_name",
@@ -250,7 +256,7 @@ class ConfigManager:
     force_str = {"command_permissions", "level_permissions"}
 
     defaults = {**public_keys, **private_keys, **protected_keys}
-    all_keys = set(defaults.keys())
+    all_keys = frozenset(defaults.keys())
 
     def __init__(self, bot):
         self.bot = bot

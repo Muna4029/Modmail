@@ -164,7 +164,8 @@ class Modmail(commands.Cog):
                     description = format_description(i, names)
                     embed = discord.Embed(color=self.bot.main_color, description=description)
                     embed.set_author(
-                        name="Snippets", icon_url=self.bot.get_guild_icon(guild=ctx.guild, size=128)
+                        name="Snippets",
+                        icon_url=self.bot.get_guild_icon(guild=ctx.guild, size=128),
                     )
                     embeds.append(embed)
 
@@ -179,21 +180,30 @@ class Modmail(commands.Cog):
             else:
                 val = self.bot.snippets[snippet_name]
                 embed = discord.Embed(
-                    title=f'Snippet - "{snippet_name}":', description=val, color=self.bot.main_color
+                    title=f'Snippet - "{snippet_name}":',
+                    description=val,
+                    color=self.bot.main_color,
                 )
             return await ctx.send(embed=embed)
 
         if not self.bot.snippets:
             embed = discord.Embed(
-                color=self.bot.error_color, description="You dont have any snippets at the moment."
+                color=self.bot.error_color,
+                description="You dont have any snippets at the moment.",
             )
             embed.set_footer(text=f'Check "{self.bot.prefix}help snippet add" to add a snippet.')
-            embed.set_author(name="Snippets", icon_url=self.bot.get_guild_icon(guild=ctx.guild, size=128))
+            embed.set_author(
+                name="Snippets",
+                icon_url=self.bot.get_guild_icon(guild=ctx.guild, size=128),
+            )
             return await ctx.send(embed=embed)
 
         embeds = [discord.Embed(color=self.bot.main_color) for _ in range((len(self.bot.snippets) // 10) + 1)]
         for embed in embeds:
-            embed.set_author(name="Snippets", icon_url=self.bot.get_guild_icon(guild=ctx.guild, size=128))
+            embed.set_author(
+                name="Snippets",
+                icon_url=self.bot.get_guild_icon(guild=ctx.guild, size=128),
+            )
 
         for i, snippet in enumerate(sorted(self.bot.snippets.items())):
             embeds[i // 10].add_field(
@@ -448,7 +458,10 @@ class Modmail(commands.Cog):
             silent = any(word in silent_words for word in options.split())
 
         await thread.channel.move(
-            category=category, end=True, sync_permissions=True, reason=f"{ctx.author} moved this thread."
+            category=category,
+            end=True,
+            sync_permissions=True,
+            reason=f"{ctx.author} moved this thread.",
         )
 
         if self.bot.config["thread_move_notify"] and not silent:
@@ -526,7 +539,8 @@ class Modmail(commands.Cog):
             if thread.close_task is not None or thread.auto_close_task is not None:
                 await thread.cancel_closure(all=True)
                 embed = discord.Embed(
-                    color=self.bot.error_color, description="Scheduled close has been cancelled."
+                    color=self.bot.error_color,
+                    description="Scheduled close has been cancelled.",
                 )
             else:
                 embed = discord.Embed(
@@ -625,7 +639,8 @@ class Modmail(commands.Cog):
             mentions.remove(mention)
             await self.bot.config.update()
             embed = discord.Embed(
-                color=self.bot.main_color, description=f"{mention} will no longer be notified."
+                color=self.bot.main_color,
+                description=f"{mention} will no longer be notified.",
             )
         return await ctx.send(embed=embed)
 
@@ -736,7 +751,8 @@ class Modmail(commands.Cog):
                 continue
         if not found:
             embed = discord.Embed(
-                color=self.bot.error_color, description="Message not found or no longer exists."
+                color=self.bot.error_color,
+                description="Message not found or no longer exists.",
             )
         else:
             embed = discord.Embed(color=self.bot.main_color, description=message.jump_url)
@@ -899,7 +915,8 @@ class Modmail(commands.Cog):
             if self.bot.config["show_timestamp"]:
                 em.timestamp = discord.utils.utcnow()
             em.set_footer(
-                text=f"{users[0]}", icon_url=users[0].display_avatar.url if users[0].display_avatar else None
+                text=f"{users[0]}",
+                icon_url=users[0].display_avatar.url if users[0].display_avatar else None,
             )
 
             for i in ctx.thread.recipients:
@@ -968,7 +985,8 @@ class Modmail(commands.Cog):
         to_exec = []
         if not silent:
             description = self.bot.formatter.format(
-                self.bot.config["private_removed_from_group_response"], moderator=ctx.author
+                self.bot.config["private_removed_from_group_response"],
+                moderator=ctx.author,
             )
             em = discord.Embed(
                 title=self.bot.config["private_removed_from_group_title"],
@@ -997,7 +1015,8 @@ class Modmail(commands.Cog):
             if self.bot.config["show_timestamp"]:
                 em.timestamp = discord.utils.utcnow()
             em.set_footer(
-                text=f"{users[0]}", icon_url=users[0].display_avatar.url if users[0].display_avatar else None
+                text=f"{users[0]}",
+                icon_url=users[0].display_avatar.url if users[0].display_avatar else None,
             )
 
             for i in ctx.thread.recipients:
@@ -1093,7 +1112,8 @@ class Modmail(commands.Cog):
             if self.bot.config["show_timestamp"]:
                 em.timestamp = discord.utils.utcnow()
             em.set_footer(
-                text=f"{users[0]}", icon_url=users[0].display_avatar.url if users[0].display_avatar else None
+                text=f"{users[0]}",
+                icon_url=users[0].display_avatar.url if users[0].display_avatar else None,
             )
 
             for i in ctx.thread.recipients:
@@ -1184,7 +1204,8 @@ class Modmail(commands.Cog):
             if self.bot.config["show_timestamp"]:
                 em.timestamp = discord.utils.utcnow()
             em.set_footer(
-                text=f"{users[0]}", icon_url=users[0].display_avatar.url if users[0].display_avatar else None
+                text=f"{users[0]}",
+                icon_url=users[0].display_avatar.url if users[0].display_avatar else None,
             )
 
             for i in ctx.thread.recipients:
@@ -1392,7 +1413,10 @@ class Modmail(commands.Cog):
         automatically embedding image URLs.
         """
         msg = self.bot.formatter.format(
-            msg, channel=ctx.channel, recipient=ctx.thread.recipient, author=ctx.message.author
+            msg,
+            channel=ctx.channel,
+            recipient=ctx.thread.recipient,
+            author=ctx.message.author,
         )
         ctx.message.content = msg
         async with safe_typing(ctx):
@@ -1414,7 +1438,10 @@ class Modmail(commands.Cog):
         automatically embedding image URLs.
         """
         msg = self.bot.formatter.format(
-            msg, channel=ctx.channel, recipient=ctx.thread.recipient, author=ctx.message.author
+            msg,
+            channel=ctx.channel,
+            recipient=ctx.thread.recipient,
+            author=ctx.message.author,
         )
         ctx.message.content = msg
         async with safe_typing(ctx):
@@ -1436,7 +1463,10 @@ class Modmail(commands.Cog):
         automatically embedding image URLs.
         """
         msg = self.bot.formatter.format(
-            msg, channel=ctx.channel, recipient=ctx.thread.recipient, author=ctx.message.author
+            msg,
+            channel=ctx.channel,
+            recipient=ctx.thread.recipient,
+            author=ctx.message.author,
         )
         ctx.message.content = msg
         async with safe_typing(ctx):
@@ -1458,7 +1488,10 @@ class Modmail(commands.Cog):
         automatically embedding image URLs.
         """
         msg = self.bot.formatter.format(
-            msg, channel=ctx.channel, recipient=ctx.thread.recipient, author=ctx.message.author
+            msg,
+            channel=ctx.channel,
+            recipient=ctx.thread.recipient,
+            author=ctx.message.author,
         )
         ctx.message.content = msg
         async with safe_typing(ctx):
@@ -1576,7 +1609,12 @@ class Modmail(commands.Cog):
         self,
         ctx,
         users: commands.Greedy[
-            Union[Literal["silent", "silently"], discord.Member, discord.User, discord.Role]
+            Union[
+                Literal["silent", "silently"],
+                discord.Member,
+                discord.User,
+                discord.Role,
+            ]
         ],
         *,
         category: SimilarCategoryConverter = None,
@@ -1654,7 +1692,11 @@ class Modmail(commands.Cog):
                 title = None
 
             if manual_trigger:  # not react to contact
-                embed = discord.Embed(title=title, color=self.bot.error_color, description="\n".join(errors))
+                embed = discord.Embed(
+                    title=title,
+                    color=self.bot.error_color,
+                    description="\n".join(errors),
+                )
                 await ctx.send(embed=embed, delete_after=10)
 
             if not users:
@@ -1674,7 +1716,10 @@ class Modmail(commands.Cog):
         if thread.cancelled:
             return
 
-        if self.bot.config["dm_disabled"] in (DMDisabled.NEW_THREADS, DMDisabled.ALL_THREADS):
+        if self.bot.config["dm_disabled"] in (
+            DMDisabled.NEW_THREADS,
+            DMDisabled.ALL_THREADS,
+        ):
             logger.info("Contacting user %s when Modmail DM is disabled.", users[0])
 
         if not silent and not self.bot.config.get("thread_contact_silently"):
@@ -1693,7 +1738,8 @@ class Modmail(commands.Cog):
             if self.bot.config["show_timestamp"]:
                 em.timestamp = discord.utils.utcnow()
             em.set_footer(
-                text=f"{creator}", icon_url=creator.display_avatar.url if creator.display_avatar else None
+                text=f"{creator}",
+                icon_url=creator.display_avatar.url if creator.display_avatar else None,
             )
 
             for u in users:
@@ -2016,7 +2062,9 @@ class Modmail(commands.Cog):
             )
         else:
             embed = discord.Embed(
-                title="Error", description=f"{mention} is not blocked.", color=self.bot.error_color
+                title="Error",
+                description=f"{mention} is not blocked.",
+                color=self.bot.error_color,
             )
 
         return await ctx.send(embed=embed)
@@ -2115,8 +2163,10 @@ class Modmail(commands.Cog):
         if m is not None:
             users = set(
                 filter(
-                    lambda member: member.name == m.group(1)
-                    and (member.discriminator == "0" or member.discriminator == m.group(2)),
+                    lambda member: (
+                        member.name == m.group(1)
+                        and (member.discriminator == "0" or member.discriminator == m.group(2))
+                    ),
                     ctx.guild.members,
                 )
             )
@@ -2156,7 +2206,9 @@ class Modmail(commands.Cog):
                 thread.ready = True
                 logger.info("Setting current channel's topic to User ID and created new thread.")
                 await ctx.channel.edit(
-                    reason="Fix broken Modmail thread", name=name, topic=f"User ID: {user.id}"
+                    reason="Fix broken Modmail thread",
+                    name=name,
+                    topic=f"User ID: {user.id}",
                 )
                 return await self.bot.add_reaction(ctx.message, sent_emoji)
 
