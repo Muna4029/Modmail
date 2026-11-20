@@ -4,7 +4,6 @@ __version__ = "4.2.0"
 import asyncio
 import copy
 import hashlib
-import logging
 import os
 import re
 import string
@@ -12,7 +11,7 @@ import struct
 import sys
 import platform
 import typing
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from subprocess import PIPE
 from types import SimpleNamespace
 
@@ -2035,4 +2034,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

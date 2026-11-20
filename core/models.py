@@ -3,18 +3,16 @@ import logging
 import os
 import re
 import sys
-import _string
-
 from difflib import get_close_matches
 from enum import IntEnum
-from logging import FileHandler, StreamHandler, Handler
+from logging import FileHandler, Handler, StreamHandler
 from logging.handlers import RotatingFileHandler
 from string import Formatter
 from typing import Dict, Optional
 
+import _string
 import discord
 from discord.ext import commands
-
 
 try:
     from colorama import Fore, Style
@@ -28,6 +26,10 @@ if ".heroku" in os.environ.get("PYTHONHOME", ""):
 
 
 class ModmailLogger(logging.Logger):
+    """
+    Custom logger for modmail with additional formatting methods.
+    """
+
     @staticmethod
     def _debug_(*msgs):
         return f'{Fore.CYAN}{" ".join(msgs)}{Style.RESET_ALL}'
@@ -70,7 +72,10 @@ class ModmailLogger(logging.Logger):
         if self.isEnabledFor(level):
             self._log(
                 level,
-                Fore.BLACK + Style.BRIGHT + "-------------------------" + Style.RESET_ALL,
+                Fore.BLACK
+                + Style.BRIGHT
+                + "-------------------------"
+                + Style.RESET_ALL,
                 [],
             )
 
@@ -95,7 +100,9 @@ class JsonFormatter(logging.Formatter):
         time_format: str = "%Y-%m-%dT%H:%M:%S",
         msec_format: str = "%s.%03dZ",
     ):
-        self.fmt_dict: Dict[str, str] = fmt_dict if fmt_dict is not None else {"message": "message"}
+        self.fmt_dict: Dict[str, str] = (
+            fmt_dict if fmt_dict is not None else {"message": "message"}
+        )
         self.default_time_format: str = time_format
         self.default_msec_format: str = msec_format
         self.datefmt: Optional[str] = None
@@ -111,7 +118,10 @@ class JsonFormatter(logging.Formatter):
         Overwritten to return a dictionary of the relevant LogRecord attributes instead of a string.
         KeyError is raised if an unknown attribute is provided in the fmt_dict.
         """
-        return {fmt_key: record.__dict__[fmt_val] for fmt_key, fmt_val in self.fmt_dict.items()}
+        return {
+            fmt_key: record.__dict__[fmt_val]
+            for fmt_key, fmt_val in self.fmt_dict.items()
+        }
 
     def format(self, record) -> str:
         """
@@ -141,6 +151,10 @@ class JsonFormatter(logging.Formatter):
 
 
 class FileFormatter(logging.Formatter):
+    """
+    Formatter that removes ANSI escape sequences from log messages.
+    """
+
     ansi_escape = re.compile(r"\x1B\[[0-?]*[ -/]*[@-~]")
 
     def format(self, record):
@@ -149,7 +163,8 @@ class FileFormatter(logging.Formatter):
 
 
 log_stream_formatter = logging.Formatter(
-    "%(asctime)s %(name)s[%(lineno)d] - %(levelname)s: %(message)s", datefmt="%m/%d/%y %H:%M:%S"
+    "%(asctime)s %(name)s[%(lineno)d] - %(levelname)s: %(message)s",
+    datefmt="%m/%d/%y %H:%M:%S",
 )
 
 log_file_formatter = FileFormatter(
@@ -221,7 +236,9 @@ def create_log_handler(
     depending on the `rotating` value.
     """
     if filename is None and rotating:
-        raise ValueError("`filename` must be set to instantiate a `RotatingFileHandler`.")
+        raise ValueError(
+            "`filename` must be set to instantiate a `RotatingFileHandler`."
+        )
 
     if filename is None:
         handler = StreamHandler(stream=sys.stdout, **kwargs)
@@ -231,7 +248,12 @@ def create_log_handler(
         formatter = log_file_formatter
     else:
         handler = RotatingFileHandler(
-            filename, mode=mode, encoding=encoding, maxBytes=maxBytes, backupCount=backupCount, **kwargs
+            filename,
+            mode=mode,
+            encoding=encoding,
+            maxBytes=maxBytes,
+            backupCount=backupCount,
+            **kwargs,
         )
         formatter = log_file_formatter
 
@@ -252,6 +274,9 @@ ch_debug: Optional[RotatingFileHandler] = None
 
 
 def getLogger(name=None) -> ModmailLogger:
+    """
+    Get a logger instance with the specified name.
+    """
     logger = logging.getLogger(name)
     logger.setLevel(log_level)
     logger.addHandler(ch)
@@ -262,9 +287,15 @@ def getLogger(name=None) -> ModmailLogger:
 
 
 def configure_logging(bot) -> None:
+    """
+    Configure logging for the bot with specified formats and levels.
+    """
     global ch_debug, log_level, ch
 
-    stream_log_format, file_log_format = bot.config["stream_log_format"], bot.config["file_log_format"]
+    stream_log_format, file_log_format = (
+        bot.config["stream_log_format"],
+        bot.config["file_log_format"],
+    )
     if stream_log_format == "json":
         ch.setFormatter(json_formatter)
 
@@ -318,8 +349,13 @@ def configure_logging(bot) -> None:
     non_verbose_log_level = max(d_level, logging.INFO)
     stream_handler = create_log_handler(level=non_verbose_log_level)
     if non_verbose_log_level != d_level:
-        logger.info("Discord logging level (stdout): %s.", logging.getLevelName(non_verbose_log_level))
-        logger.info("Discord logging level (logfile): %s.", logging.getLevelName(d_level))
+        logger.info(
+            "Discord logging level (stdout): %s.",
+            logging.getLevelName(non_verbose_log_level),
+        )
+        logger.info(
+            "Discord logging level (logfile): %s.", logging.getLevelName(d_level)
+        )
     else:
         logger.info("Discord logging level: %s.", logging.getLevelName(d_level))
     d_logger.addHandler(stream_handler)
@@ -336,7 +372,9 @@ class InvalidConfigError(commands.BadArgument):
     @property
     def embed(self):
         # Single reference of Color.red()
-        return discord.Embed(title="Error", description=self.msg, color=discord.Color.red())
+        return discord.Embed(
+            title="Error", description=self.msg, color=discord.Color.red()
+        )
 
 
 class _Default:
@@ -347,6 +385,10 @@ Default = _Default()
 
 
 class SafeFormatter(Formatter):
+    """
+    A safe formatter that handles field access without raising exceptions.
+    """
+
     def get_field(self, field_name, args, kwargs):
         first, rest = _string.formatter_field_name_split(field_name)
 
@@ -376,6 +418,10 @@ class SafeFormatter(Formatter):
 
 
 class UnseenFormatter(Formatter):
+    """
+    A formatter that returns a placeholder for unseen keys.
+    """
+
     def get_value(self, key, args, kwds):
         if isinstance(key, str):
             try:
@@ -387,6 +433,10 @@ class UnseenFormatter(Formatter):
 
 
 class SimilarCategoryConverter(commands.CategoryChannelConverter):
+    """
+    A converter that finds similar category channels based on name.
+    """
+
     async def convert(self, ctx, argument):
         bot = ctx.bot
         guild = ctx.guild
@@ -403,7 +453,9 @@ class SimilarCategoryConverter(commands.CategoryChannelConverter):
                     if isinstance(c, discord.CategoryChannel)
                 }
 
-            result = get_close_matches(argument.casefold(), categories.keys(), n=1, cutoff=0.75)
+            result = get_close_matches(
+                argument.casefold(), categories.keys(), n=1, cutoff=0.75
+            )
             if result:
                 result = categories[result[0]]
 
@@ -432,37 +484,71 @@ class DummyMessage:
         return bool(self._message)
 
     async def delete(self, *, delay=None):
+        """
+        Dummy delete method that does nothing.
+        """
         return
 
     async def edit(self, **fields):
+        """
+        Dummy edit method that does nothing.
+        """
         return
 
     async def add_reaction(self, emoji):
+        """
+        Dummy add_reaction method that does nothing.
+        """
         return
 
     async def remove_reaction(self, emoji):
+        """
+        Dummy remove_reaction method that does nothing.
+        """
         return
 
     async def clear_reaction(self, emoji):
+        """
+        Dummy clear_reaction method that does nothing.
+        """
         return
 
     async def clear_reactions(self):
+        """
+        Dummy clear_reactions method that does nothing.
+        """
         return
 
     async def pin(self, *, reason=None):
+        """
+        Dummy pin method that does nothing.
+        """
         return
 
     async def unpin(self, *, reason=None):
+        """
+        Dummy unpin method that does nothing.
+        """
         return
 
     async def publish(self):
+        """
+        Dummy publish method that does nothing.
+        """
         return
 
     async def ack(self):
+        """
+        Dummy ack method that does nothing.
+        """
         return
 
 
 class PermissionLevel(IntEnum):
+    """
+    Enum representing different permission levels.
+    """
+
     OWNER = 5
     ADMINISTRATOR = 4
     ADMIN = 4
@@ -475,12 +561,20 @@ class PermissionLevel(IntEnum):
 
 
 class DMDisabled(IntEnum):
+    """
+    Enum representing different DM disabled states.
+    """
+
     NONE = 0
     NEW_THREADS = 1
     ALL_THREADS = 2
 
 
 class HostingMethod(IntEnum):
+    """
+    Enum representing different hosting methods.
+    """
+
     HEROKU = 0
     PM2 = 1
     SYSTEMD = 2

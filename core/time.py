@@ -1,5 +1,5 @@
 """
-UserFriendlyTime by Rapptz
+UserFriendlyTime class for handling user-friendly time formats.
 Source:
 https://github.com/Rapptz/RoboDanny/blob/rewrite/cogs/utils/time.py
 """
@@ -7,14 +7,16 @@ https://github.com/Rapptz/RoboDanny/blob/rewrite/cogs/utils/time.py
 from __future__ import annotations
 
 import datetime
-import discord
+import re
 from typing import TYPE_CHECKING, Any, Optional, Union
+
+import discord
 import parsedatetime as pdt
 from dateutil.relativedelta import relativedelta
-from .utils import human_join
-from discord.ext import commands
 from discord import app_commands
-import re
+from discord.ext import commands
+
+from .utils import human_join
 
 # Monkey patch mins and secs into the units
 units = pdt.pdtLocales["en_US"].units
@@ -27,7 +29,7 @@ if TYPE_CHECKING:
 
 
 class plural:
-    """https://github.com/Rapptz/RoboDanny/blob/bf7d4226350dff26df4981dd53134eeb2aceeb87/cogs/utils/formats.py#L8-L18"""
+    """Class for handling pluralization of words based on a numeric value."""
 
     def __init__(self, value: int):
         self.value: int = value
@@ -42,6 +44,8 @@ class plural:
 
 
 class ShortTime:
+    """Class for parsing and converting short time formats."""
+
     compiled = re.compile(
         """
            (?:(?P<years>[0-9])(?:years?|y))?             # e.g. 2y
@@ -64,7 +68,9 @@ class ShortTime:
         if match is None or not match.group(0):
             match = self.discord_fmt.fullmatch(argument)
             if match is not None:
-                self.dt = datetime.datetime.utcfromtimestamp(int(match.group("ts")), tz=datetime.timezone.utc)
+                self.dt = datetime.datetime.utcfromtimestamp(
+                    int(match.group("ts")), tz=datetime.timezone.utc
+                )
                 return
             else:
                 raise commands.BadArgument("invalid time provided")
@@ -79,17 +85,26 @@ class ShortTime:
 
 
 class HumanTime:
+    """Class for parsing human-readable time formats."""
+
     calendar = pdt.Calendar(version=pdt.VERSION_CONTEXT_STYLE)
 
     def __init__(self, argument: str, *, now: Optional[datetime.datetime] = None):
         now = now or datetime.datetime.utcnow()
         dt, status = self.calendar.parseDT(argument, sourceTime=now)
         if not status.hasDateOrTime:
-            raise commands.BadArgument('invalid time provided, try e.g. "tomorrow" or "3 days"')
+            raise commands.BadArgument(
+                'invalid time provided, try e.g. "tomorrow" or "3 days"'
+            )
 
         if not status.hasTime:
             # replace it with the current time
-            dt = dt.replace(hour=now.hour, minute=now.minute, second=now.second, microsecond=now.microsecond)
+            dt = dt.replace(
+                hour=now.hour,
+                minute=now.minute,
+                second=now.second,
+                microsecond=now.microsecond,
+            )
 
         self.dt: datetime.datetime = dt
         self._past: bool = dt < now
@@ -100,6 +115,8 @@ class HumanTime:
 
 
 class Time(HumanTime):
+    """Class for handling time with a specific format."""
+
     def __init__(self, argument: str, *, now: Optional[datetime.datetime] = None):
         try:
             o = ShortTime(argument, now=now)
@@ -111,6 +128,8 @@ class Time(HumanTime):
 
 
 class FutureTime(Time):
+    """Class for handling future time inputs."""
+
     def __init__(self, argument: str, *, now: Optional[datetime.datetime] = None):
         super().__init__(argument, now=now)
 
@@ -119,10 +138,14 @@ class FutureTime(Time):
 
 
 class BadTimeTransform(app_commands.AppCommandError):
+    """Exception raised for invalid time transformations."""
+
     pass
 
 
 class TimeTransformer(app_commands.Transformer):
+    """Transformer for converting time inputs into datetime objects."""
+
     async def transform(self, interaction, value: str) -> datetime.datetime:
         now = interaction.created_at
         try:
@@ -140,6 +163,8 @@ class TimeTransformer(app_commands.Transformer):
 
 # CHANGE: Added now
 class FriendlyTimeResult:
+    """Class for holding results of friendly time conversions."""
+
     dt: datetime.datetime
     now: datetime.datetime
     arg: str
@@ -158,16 +183,14 @@ class FriendlyTimeResult:
         self.arg = ""
 
     async def ensure_constraints(
-        self, ctx: Context, uft: UserFriendlyTime, now: datetime.datetime, remaining: str
+        self,
+        ctx: Context,
+        uft: UserFriendlyTime,
+        now: datetime.datetime,
+        remaining: str,
     ) -> None:
         if self.dt < now:
             raise commands.BadArgument("This time is in the past.")
-
-        # CHANGE
-        # if not remaining:
-        #     if uft.default is None:
-        #         raise commands.BadArgument("Missing argument after the time.")
-        #     remaining = uft.default
 
         if uft.converter is not None:
             self.arg = await uft.converter.convert(ctx, remaining)
@@ -193,7 +216,10 @@ class UserFriendlyTime(commands.Converter):
         self.converter: commands.Converter = converter  # type: ignore  # It doesn't understand this narrowing
         self.default: Any = default
 
-    async def convert(self, ctx: Context, argument: str, *, now=None) -> FriendlyTimeResult:
+    async def convert(
+        self, ctx: Context, argument: str, *, now=None
+    ) -> FriendlyTimeResult:
+        """Convert a time argument into a FriendlyTimeResult object."""
         calendar = HumanTime.calendar
         regex = ShortTime.compiled
         if now is None:
@@ -211,7 +237,9 @@ class UserFriendlyTime(commands.Converter):
             match = ShortTime.discord_fmt.match(argument)
             if match is not None:
                 result = FriendlyTimeResult(
-                    datetime.datetime.utcfromtimestamp(int(match.group("ts")), now, tz=datetime.timezone.utc)
+                    datetime.datetime.utcfromtimestamp(
+                        int(match.group("ts")), now, tz=datetime.timezone.utc
+                    )
                 )
                 remaining = argument[match.end() :].strip()
                 await result.ensure_constraints(ctx, self, now, remaining)
@@ -229,7 +257,6 @@ class UserFriendlyTime(commands.Converter):
 
         elements = calendar.nlp(argument, sourceTime=now)
         if elements is None or len(elements) == 0:
-            # CHANGE
             result = FriendlyTimeResult(now)
             await result.ensure_constraints(ctx, self, now, argument)
             return result
@@ -243,7 +270,9 @@ class UserFriendlyTime(commands.Converter):
         dt, status, begin, end, dt_string = elements[0]
 
         if not status.hasDateOrTime:
-            raise commands.BadArgument('Invalid time provided, try e.g. "tomorrow" or "3 days".')
+            raise commands.BadArgument(
+                'Invalid time provided, try e.g. "tomorrow" or "3 days".'
+            )
 
         if begin not in (0, 1) and end != len(argument):
             raise commands.BadArgument(
@@ -254,7 +283,12 @@ class UserFriendlyTime(commands.Converter):
 
         if not status.hasTime:
             # replace it with the current time
-            dt = dt.replace(hour=now.hour, minute=now.minute, second=now.second, microsecond=now.microsecond)
+            dt = dt.replace(
+                hour=now.hour,
+                minute=now.minute,
+                second=now.second,
+                microsecond=now.microsecond,
+            )
 
         # if midnight is provided, just default to next day
         if status.accuracy == pdt.pdtContext.ACU_HALFDAY:
@@ -270,7 +304,9 @@ class UserFriendlyTime(commands.Converter):
                     raise commands.BadArgument("Expected quote before time input...")
 
                 if not (end < len(argument) and argument[end] == '"'):
-                    raise commands.BadArgument("If the time is quoted, you must unquote it.")
+                    raise commands.BadArgument(
+                        "If the time is quoted, you must unquote it."
+                    )
 
                 remaining = argument[end + 1 :].lstrip(" ,.!")
             else:
@@ -358,4 +394,5 @@ def human_timedelta(
 
 
 def format_relative(dt: datetime.datetime) -> str:
+    """Format a datetime object as a relative time string."""
     return discord.utils.format_dt(dt, "R")

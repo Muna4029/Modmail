@@ -1,3 +1,5 @@
+"""Module for configuration management."""
+
 import asyncio
 import json
 import os
@@ -5,14 +7,13 @@ import re
 import typing
 from copy import deepcopy
 
-from dotenv import load_dotenv
-import isodate
-
 import discord
+import isodate
 from discord.ext.commands import BadArgument
+from dotenv import load_dotenv
 
 from core._color_data import ALL_COLORS
-from core.models import DMDisabled, InvalidConfigError, Default, getLogger
+from core.models import Default, DMDisabled, InvalidConfigError, getLogger
 from core.time import UserFriendlyTime
 from core.utils import strtobool
 
@@ -21,6 +22,8 @@ load_dotenv()
 
 
 class ConfigManager:
+    """Configuration manager for handling bot settings and keys."""
+
     public_keys = {
         # activity
         "twitch_url": "https://www.twitch.tv/discordmodmail/",
@@ -198,7 +201,13 @@ class ConfigManager:
 
     colors = {"mod_color", "recipient_color", "main_color", "error_color"}
 
-    time_deltas = {"account_age", "guild_age", "thread_auto_close", "thread_cooldown", "log_expiration"}
+    time_deltas = {
+        "account_age",
+        "guild_age",
+        "thread_auto_close",
+        "thread_cooldown",
+        "log_expiration",
+    }
 
     booleans = {
         "use_user_id_channel_name",
@@ -253,42 +262,59 @@ class ConfigManager:
     all_keys = set(defaults.keys())
 
     def __init__(self, bot):
+        """Initializes the ConfigManager with the bot instance."""
         self.bot = bot
         self._cache = {}
         self.ready_event = asyncio.Event()
         self.config_help = {}
 
     def __repr__(self):
+        """Returns a string representation of the ConfigManager's cache."""
         return repr(self._cache)
 
     def populate_cache(self) -> dict:
+        """Populates the cache with configuration data from environment variables and files."""
         data = deepcopy(self.defaults)
 
         # populate from env var and .env file
-        data.update({k.lower(): v for k, v in os.environ.items() if k.lower() in self.all_keys})
-        config_json = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "config.json")
+        data.update(
+            {k.lower(): v for k, v in os.environ.items() if k.lower() in self.all_keys}
+        )
+        config_json = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "config.json"
+        )
         if os.path.exists(config_json):
             logger.debug("Loading envs from config.json.")
             with open(config_json, "r", encoding="utf-8") as f:
                 # Config json should override env vars
                 try:
-                    data.update({k.lower(): v for k, v in json.load(f).items() if k.lower() in self.all_keys})
+                    data.update(
+                        {
+                            k.lower(): v
+                            for k, v in json.load(f).items()
+                            if k.lower() in self.all_keys
+                        }
+                    )
                 except json.JSONDecodeError:
-                    logger.critical("Failed to load config.json env values.", exc_info=True)
+                    logger.critical(
+                        "Failed to load config.json env values.", exc_info=True
+                    )
         self._cache = data
 
-        config_help_json = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config_help.json")
+        config_help_json = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "config_help.json"
+        )
         with open(config_help_json, "r", encoding="utf-8") as f:
             self.config_help = dict(sorted(json.load(f).items()))
 
         return self._cache
 
     async def update(self):
-        """Updates the config with data from the cache"""
+        """Updates the config with data from the cache."""
         await self.bot.api.update_config(self.filter_default(self._cache))
 
     async def refresh(self) -> dict:
-        """Refreshes internal cache with data from database"""
+        """Refreshes internal cache with data from database."""
         for k, v in (await self.bot.api.get_config()).items():
             k = k.lower()
             if k in self.all_keys:
@@ -299,9 +325,11 @@ class ConfigManager:
         return self._cache
 
     async def wait_until_ready(self) -> None:
+        """Waits until the configuration is ready."""
         await self.ready_event.wait()
 
     def __setitem__(self, key: str, item: typing.Any) -> None:
+        """Sets the value for a given configuration key."""
         key = key.lower()
         logger.info("Setting %s.", key)
         if key not in self.all_keys:
@@ -309,13 +337,16 @@ class ConfigManager:
         self._cache[key] = item
 
     def __getitem__(self, key: str) -> typing.Any:
+        """Gets the value for a given configuration key."""
         # make use of the custom methods in func:get:
         return self.get(key)
 
     def __delitem__(self, key: str) -> None:
+        """Deletes the value for a given configuration key."""
         return self.remove(key)
 
     def get(self, key: str, *, convert: bool = True) -> typing.Any:
+        """Gets the value for a given configuration key, with optional conversion."""
         key = key.lower()
         if key not in self.all_keys:
             raise InvalidConfigError(f'Configuration "{key}" is invalid.')
@@ -385,6 +416,7 @@ class ConfigManager:
         return value
 
     async def set(self, key: str, item: typing.Any, convert=True) -> None:
+        """Sets the value for a given configuration key, with optional conversion."""
         if not convert:
             return self.__setitem__(key, item)
 
@@ -419,7 +451,9 @@ class ConfigManager:
             except isodate.ISO8601Error:
                 try:
                     converter = UserFriendlyTime()
-                    time = await converter.convert(None, item, now=discord.utils.utcnow())
+                    time = await converter.convert(
+                        None, item, now=discord.utils.utcnow()
+                    )
                     if time.arg:
                         raise ValueError
                 except BadArgument as exc:
@@ -448,6 +482,7 @@ class ConfigManager:
         return self.__setitem__(key, item)
 
     def remove(self, key: str) -> typing.Any:
+        """Removes the value for a given configuration key."""
         key = key.lower()
         logger.info("Removing %s.", key)
         if key not in self.all_keys:
@@ -458,10 +493,14 @@ class ConfigManager:
         return self._cache[key]
 
     def items(self) -> typing.Iterable:
+        """Returns all items in the configuration cache."""
         return self._cache.items()
 
     @classmethod
-    def filter_valid(cls, data: typing.Dict[str, typing.Any]) -> typing.Dict[str, typing.Any]:
+    def filter_valid(
+        cls, data: typing.Dict[str, typing.Any]
+    ) -> typing.Dict[str, typing.Any]:
+        """Filters the valid configuration keys from the provided data."""
         return {
             k.lower(): v
             for k, v in data.items()
@@ -469,7 +508,10 @@ class ConfigManager:
         }
 
     @classmethod
-    def filter_default(cls, data: typing.Dict[str, typing.Any]) -> typing.Dict[str, typing.Any]:
+    def filter_default(
+        cls, data: typing.Dict[str, typing.Any]
+    ) -> typing.Dict[str, typing.Any]:
+        """Filters the configuration data against the default values."""
         # TODO: use .get to prevent errors
         filtered = {}
         for k, v in data.items():
