@@ -1,10 +1,8 @@
-import secrets
 import sys
 from json import JSONDecodeError
 from typing import Any, Dict, Union, Optional
 
-import discord
-from discord import Member, DMChannel, TextChannel, Message
+from discord import Member, TextChannel, Message
 from discord.ext import commands
 
 from aiohttp import ClientResponseError, ClientResponse
@@ -120,11 +118,20 @@ class GitHub:
             `str` if the returned data is not a valid json data,
             the raw response.
         """
-        if headers is not None:
-            headers.update(self.headers)
+        # Safely merge instance headers with provided headers without assuming either is non-None
+        base_headers = self.headers or {}
+        if headers is None:
+            # start from a copy of base headers to avoid mutating internal state
+            headers = base_headers.copy()
         else:
-            headers = self.headers
-        async with self.session.request(method, url, headers=headers, json=payload) as resp:
+            # create a merged dict so we don't mutate caller-provided dict or internal headers
+            merged = base_headers.copy()
+            merged.update(headers)
+            headers = merged
+
+        async with self.session.request(
+            method, url, headers=headers, json=payload
+        ) as resp:
             if return_response:
                 if read_before_return:
                     await resp.read()
@@ -133,7 +140,9 @@ class GitHub:
             return await self._get_response_data(resp)
 
     @staticmethod
-    async def _get_response_data(response: ClientResponse) -> Union[Dict[str, Any], str]:
+    async def _get_response_data(
+        response: ClientResponse,
+    ) -> Union[Dict[str, Any], str]:
         """
         Internal method to convert the response data to `dict` if the data is a
         json object, or to `str` (raw response) if the data is not a valid json.
@@ -157,7 +166,9 @@ class GitHub:
         Dict[str, Any]
             Filtered `data` to keep only the accepted pairs.
         """
-        valid_keys = self.bot.config.valid_keys.difference(self.bot.config.protected_keys)
+        valid_keys = self.bot.config.valid_keys.difference(
+            self.bot.config.protected_keys
+        )
         return {k: v for k, v in data.items() if k in valid_keys}
 
     async def update_repository(self, sha: str = None) -> Dict[str, Any]:
@@ -335,7 +346,9 @@ class ApiClient:
             `str` if the returned data is not a valid json data,
             the raw response.
         """
-        async with self.session.request(method, url, headers=headers, json=payload) as resp:
+        async with self.session.request(
+            method, url, headers=headers, json=payload
+        ) as resp:
             if return_response:
                 return resp
             try:
@@ -374,7 +387,9 @@ class ApiClient:
     async def get_log_link(self, channel_id: Union[str, int]) -> str:
         return NotImplemented
 
-    async def create_log_entry(self, recipient: Member, channel: TextChannel, creator: Member) -> str:
+    async def create_log_entry(
+        self, recipient: Member, channel: TextChannel, creator: Member
+    ) -> str:
         return NotImplemented
 
     async def delete_log_entry(self, key: str) -> bool:
@@ -408,7 +423,9 @@ class ApiClient:
     async def search_by_text(self, text: str, limit: Optional[int]):
         return NotImplemented
 
-    async def create_note(self, recipient: Member, message: Message, message_id: Union[int, str]):
+    async def create_note(
+        self, recipient: Member, message: Message, message_id: Union[int, str]
+    ):
         return NotImplemented
 
     async def find_notes(self, recipient: Member):
@@ -476,7 +493,11 @@ class MongoDBClient(ApiClient):
             logger.info('Creating "text" index for logs collection.')
             logger.info("Name: %s", index_name)
             await coll.create_index(
-                [("messages.content", "text"), ("messages.author.name", "text"), ("key", "text")]
+                [
+                    ("messages.content", "text"),
+                    ("messages.author.name", "text"),
+                    ("key", "text"),
+                ]
             )
         logger.debug("Successfully configured and verified database indexes.")
 
@@ -500,7 +521,9 @@ class MongoDBClient(ApiClient):
                     'run "Certificate.command" on MacOS, '
                     'and check certifi is up to date "pip3 install --upgrade certifi".'
                 )
-                self.db = AsyncIOMotorClient(mongo_uri, tlsAllowInvalidCertificates=True).modmail_bot
+                self.db = AsyncIOMotorClient(
+                    mongo_uri, tlsAllowInvalidCertificates=True
+                ).modmail_bot
                 return await self.validate_database_connection(ssl_retry=False)
             if "ServerSelectionTimeoutError" in message:
                 logger.critical(
@@ -540,11 +563,19 @@ class MongoDBClient(ApiClient):
         return await self.logs.find(query, projection).to_list(None)
 
     async def get_latest_user_logs(self, user_id: Union[str, int]):
-        query = {"recipient.id": str(user_id), "guild_id": str(self.bot.guild_id), "open": False}
+        query = {
+            "recipient.id": str(user_id),
+            "guild_id": str(self.bot.guild_id),
+            "open": False,
+        }
         projection = {"messages": {"$slice": 5}}
         logger.debug("Retrieving user %s latest logs.", user_id)
 
-        return await self.logs.find_one(query, projection, limit=1, sort=[("closed_at", -1)])
+        # Motor's find_one does not accept sort/limit; perform a find with sort and limit, then return the first result
+        cursor = self.logs.find(query, projection)
+        cursor = cursor.sort("closed_at", -1).limit(1)
+        results = await cursor.to_list(length=1)
+        return results[0] if results else None
 
     async def get_responded_logs(self, user_id: Union[str, int]) -> list:
         query = {
@@ -575,7 +606,9 @@ class MongoDBClient(ApiClient):
             prefix = ""
         return f"{self.bot.config['log_url'].strip('/')}{'/' + prefix if prefix else ''}/{doc['key']}"
 
-    async def create_log_entry(self, recipient: Member, channel: TextChannel, creator: Member) -> str:
+    async def create_log_entry(
+        self, recipient: Member, channel: TextChannel, creator: Member
+    ) -> str:
         key = secrets.token_hex(6)
 
         await self.logs.insert_one(
@@ -592,14 +625,18 @@ class MongoDBClient(ApiClient):
                     "id": str(recipient.id),
                     "name": recipient.name,
                     "discriminator": recipient.discriminator,
-                    "avatar_url": recipient.display_avatar.url if recipient.display_avatar else None,
+                    "avatar_url": recipient.display_avatar.url
+                    if recipient.display_avatar
+                    else None,
                     "mod": False,
                 },
                 "creator": {
                     "id": str(creator.id),
                     "name": creator.name,
                     "discriminator": creator.discriminator,
-                    "avatar_url": creator.display_avatar.url if creator.display_avatar else None,
+                    "avatar_url": creator.display_avatar.url
+                    if creator.display_avatar
+                    else None,
                     "mod": isinstance(creator, Member),
                 },
                 "closer": None,
@@ -626,16 +663,22 @@ class MongoDBClient(ApiClient):
 
     async def update_config(self, data: dict):
         toset = self.bot.config.filter_valid(data)
-        unset = self.bot.config.filter_valid({k: 1 for k in self.bot.config.all_keys if k not in data})
+        unset = self.bot.config.filter_valid(
+            {k: 1 for k in self.bot.config.all_keys if k not in data}
+        )
 
         if toset and unset:
             return await self.db.config.update_one(
                 {"bot_id": self.bot.user.id}, {"$set": toset, "$unset": unset}
             )
         if toset:
-            return await self.db.config.update_one({"bot_id": self.bot.user.id}, {"$set": toset})
+            return await self.db.config.update_one(
+                {"bot_id": self.bot.user.id}, {"$set": toset}
+            )
         if unset:
-            return await self.db.config.update_one({"bot_id": self.bot.user.id}, {"$unset": unset})
+            return await self.db.config.update_one(
+                {"bot_id": self.bot.user.id}, {"$unset": unset}
+            )
 
     async def edit_message(self, message_id: Union[int, str], new_content: str) -> None:
         await self.logs.update_one(
@@ -661,7 +704,9 @@ class MongoDBClient(ApiClient):
                 "id": str(message.author.id),
                 "name": message.author.name,
                 "discriminator": message.author.discriminator,
-                "avatar_url": message.author.display_avatar.url if message.author.display_avatar else None,
+                "avatar_url": message.author.display_avatar.url
+                if message.author.display_avatar
+                else None,
                 "mod": not isinstance(message.channel, DMChannel),
             },
             "content": message.content,
@@ -679,7 +724,9 @@ class MongoDBClient(ApiClient):
         }
 
         return await self.logs.find_one_and_update(
-            {"channel_id": channel_id}, {"$push": {"messages": data}}, return_document=True
+            {"channel_id": channel_id},
+            {"$push": {"messages": data}},
+            return_document=True,
         )
 
     async def post_log(self, channel_id: Union[int, str], data: dict) -> dict:
@@ -689,7 +736,11 @@ class MongoDBClient(ApiClient):
 
     async def search_closed_by(self, user_id: Union[int, str]):
         return await self.logs.find(
-            {"guild_id": str(self.bot.guild_id), "open": False, "closer.id": str(user_id)},
+            {
+                "guild_id": str(self.bot.guild_id),
+                "open": False,
+                "closer.id": str(user_id),
+            },
             {"messages": {"$slice": 5}},
         ).to_list(None)
 
@@ -703,7 +754,9 @@ class MongoDBClient(ApiClient):
             {"messages": {"$slice": 5}},
         ).to_list(limit)
 
-    async def create_note(self, recipient: Member, message: Message, message_id: Union[int, str]):
+    async def create_note(
+        self, recipient: Member, message: Message, message_id: Union[int, str]
+    ):
         await self.db.notes.insert_one(
             {
                 "recipient": str(recipient.id),
@@ -712,7 +765,9 @@ class MongoDBClient(ApiClient):
                     "name": message.author.name,
                     "discriminator": message.author.discriminator,
                     "avatar_url": (
-                        message.author.display_avatar.url if message.author.display_avatar else None
+                        message.author.display_avatar.url
+                        if message.author.display_avatar
+                        else None
                     ),
                 },
                 "message": message.content,
@@ -725,13 +780,17 @@ class MongoDBClient(ApiClient):
 
     async def update_note_ids(self, ids: dict):
         for object_id, message_id in ids.items():
-            await self.db.notes.update_one({"_id": object_id}, {"$set": {"message_id": message_id}})
+            await self.db.notes.update_one(
+                {"_id": object_id}, {"$set": {"message_id": message_id}}
+            )
 
     async def delete_note(self, message_id: Union[int, str]):
         await self.db.notes.delete_one({"message_id": str(message_id)})
 
     async def edit_note(self, message_id: Union[int, str], message: str):
-        await self.db.notes.update_one({"message_id": str(message_id)}, {"$set": {"message": message}})
+        await self.db.notes.update_one(
+            {"message_id": str(message_id)}, {"$set": {"message": message}}
+        )
 
     def get_plugin_partition(self, cog):
         cls_name = cog.__class__.__name__

@@ -1,4 +1,4 @@
-from core.utils import trigger_typing, truncate, safe_typing
+from core.utils import trigger_typing, truncate, DummyParam
 import asyncio
 import inspect
 import os
@@ -31,7 +31,6 @@ from core.models import (
     UnseenFormatter,
     getLogger,
 )
-from core.utils import trigger_typing, truncate, DummyParam
 from core.paginator import EmbedPaginatorSession, MessagePaginatorSession
 
 
@@ -287,7 +286,7 @@ class Utility(commands.Cog):
     @commands.command()
     @checks.has_permissions(PermissionLevel.REGULAR)
     @utils.trigger_typing
-    async def changelog(self, ctx, version: str.lower = ""):
+    async def changelog(self, ctx, version: str = ""):
         """Shows the changelog of the Modmail."""
         changelog = await Changelog.from_url(self.bot)
         version = version.lstrip("v") if version else changelog.latest_version.version
@@ -492,7 +491,7 @@ class Utility(commands.Cog):
 
     @commands.command(aliases=["presence"])
     @checks.has_permissions(PermissionLevel.ADMINISTRATOR)
-    async def activity(self, ctx, activity_type: str.lower, *, message: str = ""):
+    async def activity(self, ctx, activity_type: str, *, message: str = ""):
         """
         Set an activity status for the bot.
 
@@ -555,7 +554,7 @@ class Utility(commands.Cog):
 
     @commands.command()
     @checks.has_permissions(PermissionLevel.ADMINISTRATOR)
-    async def status(self, ctx, *, status_type: str.lower):
+    async def status(self, ctx, *, status_type: str):
         """
         Set a status for the bot.
 
@@ -796,7 +795,7 @@ class Utility(commands.Cog):
 
     @config.command(name="set", aliases=["add"])
     @checks.has_permissions(PermissionLevel.OWNER)
-    async def config_set(self, ctx, key: str.lower, *, value: str):
+    async def config_set(self, ctx, key: str, *, value: str):
         """Set a configuration variable and its value."""
 
         keys = self.bot.config.public_keys
@@ -823,7 +822,7 @@ class Utility(commands.Cog):
 
     @config.command(name="remove", aliases=["del", "delete"])
     @checks.has_permissions(PermissionLevel.OWNER)
-    async def config_remove(self, ctx, *, key: str.lower):
+    async def config_remove(self, ctx, *, key: str):
         """Delete a set configuration variable."""
         keys = self.bot.config.public_keys
         if key in keys:
@@ -845,7 +844,7 @@ class Utility(commands.Cog):
 
     @config.command(name="get")
     @checks.has_permissions(PermissionLevel.OWNER)
-    async def config_get(self, ctx, *, key: str.lower = None):
+    async def config_get(self, ctx, *, key: str = None):
         """
         Show the configuration variables that are currently set.
 
@@ -891,7 +890,7 @@ class Utility(commands.Cog):
 
     @config.command(name="help", aliases=["info"])
     @checks.has_permissions(PermissionLevel.OWNER)
-    async def config_help(self, ctx, key: str.lower = None):
+    async def config_help(self, ctx, key: str = None):
         """
         Show information on a specified configuration.
         """
@@ -956,7 +955,7 @@ class Utility(commands.Cog):
 
     @commands.group(aliases=["aliases"], invoke_without_command=True)
     @checks.has_permissions(PermissionLevel.MODERATOR)
-    async def alias(self, ctx, *, name: str.lower = None):
+    async def alias(self, ctx, *, name: str = None):
         """
         Create shortcuts to bot commands.
 
@@ -1037,7 +1036,7 @@ class Utility(commands.Cog):
 
     @alias.command(name="raw")
     @checks.has_permissions(PermissionLevel.MODERATOR)
-    async def alias_raw(self, ctx, *, name: str.lower):
+    async def alias_raw(self, ctx, *, name: str):
         """
         View the raw content of an alias.
         """
@@ -1118,7 +1117,7 @@ class Utility(commands.Cog):
 
     @alias.command(name="add", aliases=["create", "make"])
     @checks.has_permissions(PermissionLevel.MODERATOR)
-    async def alias_add(self, ctx, name: str.lower, *, value):
+    async def alias_add(self, ctx, name: str, *, value):
         """
         Add an alias.
 
@@ -1167,7 +1166,7 @@ class Utility(commands.Cog):
 
     @alias.command(name="remove", aliases=["del", "delete"])
     @checks.has_permissions(PermissionLevel.MODERATOR)
-    async def alias_remove(self, ctx, *, name: str.lower):
+    async def alias_remove(self, ctx, *, name: str):
         """Remove an alias."""
 
         if name in self.bot.aliases:
@@ -1186,7 +1185,7 @@ class Utility(commands.Cog):
 
     @alias.command(name="edit")
     @checks.has_permissions(PermissionLevel.MODERATOR)
-    async def alias_edit(self, ctx, name: str.lower, *, value):
+    async def alias_edit(self, ctx, name: str, *, value):
         """
         Edit an alias.
         """
@@ -1252,7 +1251,7 @@ class Utility(commands.Cog):
 
     @permissions.command(name="override")
     @checks.has_permissions(PermissionLevel.OWNER)
-    async def permissions_override(self, ctx, command_name: str.lower, *, level_name: str):
+    async def permissions_override(self, ctx, command_name: str, *, level_name: str):
         """
         Change a permission level for a specific command.
 
@@ -1307,7 +1306,7 @@ class Utility(commands.Cog):
     async def permissions_add(
         self,
         ctx,
-        type_: str.lower,
+        type_: str,
         name: str,
         *,
         user_or_role: Union[discord.Role, utils.User, str],
@@ -1381,7 +1380,7 @@ class Utility(commands.Cog):
     async def permissions_remove(
         self,
         ctx,
-        type_: str.lower,
+        type_: str,
         name: str,
         *,
         user_or_role: Union[discord.Role, utils.User, str] = None,
@@ -1583,7 +1582,8 @@ class Utility(commands.Cog):
                 ),
             ]
         else:
-            user_or_role = (user_or_role or "").lower()
+            if isinstance(user_or_role, str) or user_or_role is None:
+                user_or_role = (user_or_role or "").lower()
             if user_or_role == "override":
                 if name is None:
                     done = set()

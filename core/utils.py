@@ -443,13 +443,14 @@ class _SafeTyping:
         try:
             self._cm = self._target.typing()
             return await self._cm.__aenter__()
-        except Exception:
-            # typing is best-effort; ignore any failure
+        except (AttributeError, RuntimeError, TypeError):
+            # typing is best-effort; ignore expected attribute/runtime/type failures
             self._cm = None
 
     async def __aexit__(self, exc_type, exc, tb):
         if self._cm is not None:
-            with contextlib.suppress(Exception):
+            # Suppress only the expected exceptions from the typing context exit.
+            with contextlib.suppress(AttributeError, RuntimeError, TypeError):
                 return await self._cm.__aexit__(exc_type, exc, tb)
 
 
@@ -727,11 +728,17 @@ def extract_forwarded_content(message) -> typing.Optional[str]:
                             if len(ref_msg.attachments) > 3:
                                 attachment_info += f" (+{len(ref_msg.attachments) - 3} more)"
                             return f"**{ref_author_name}:** [Attachments: {attachment_info}]"
-                except Exception:
+                except (AttributeError, TypeError, IndexError, discord.HTTPException):
+                    # Best-effort: ignore attribute/access errors or Discord HTTP errors
                     pass
-    except Exception:
-        # Silently handle any unexpected errors
-        pass
+    except (AttributeError, TypeError, IndexError, discord.HTTPException) as exc:
+        # Best-effort: ignore attribute/access errors or Discord HTTP errors
+        # Log suppressed error for debugging purposes but do not raise.
+        try:
+            logger.debug("extract_forwarded_content suppressed error: %s", exc)
+        except Exception:
+            # If logging fails for some reason, don't let that raise here.
+            pass
 
     return None
 

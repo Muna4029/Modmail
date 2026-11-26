@@ -232,7 +232,6 @@ class ConfigManager:
         "anonymous_snippets",
         "plain_snippets",
         "require_close_reason",
-        "recipient_thread_close",
         "thread_show_roles",
         "thread_show_account_age",
         "thread_show_join_age",
